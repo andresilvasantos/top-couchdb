@@ -6,14 +6,16 @@
 #include "couchdbenums.h"
 
 class QNetworkRequest;
+class CouchDBServer;
 class CouchDBQueryPrivate;
 class CouchDBQuery : public QObject
 {
     Q_OBJECT
 public:
-    explicit CouchDBQuery(QObject *parent = 0);
+    explicit CouchDBQuery(CouchDBServer *server, QObject *parent = 0);
     virtual ~CouchDBQuery();
 
+    CouchDBServer* server() const;
     QNetworkRequest* request() const;
 
     QUrl url() const;
@@ -21,6 +23,12 @@ public:
 
     CouchDBOperation operation() const;
     void setOperation(const CouchDBOperation& operation);
+
+    QString database() const;
+    void setDatabase(const QString& database);
+
+    QString documentID() const;
+    void setDocumentID(const QString& documentID);
 
     QByteArray body() const;
     void setBody(const QByteArray& body);

@@ -4,7 +4,8 @@
 enum CouchDBReplyStatus
 {
     COUCHDB_SUCCESS,
-    COUCHDB_ERROR
+    COUCHDB_ERROR,
+    COUCHDB_TIMEOUT
 };
 
 enum CouchDBOperation

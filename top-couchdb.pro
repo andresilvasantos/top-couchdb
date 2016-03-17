@@ -18,16 +18,16 @@ CONFIG += staticlib c++11
 
 HEADERS += \
     couchdbenums.h \
-    couchdbchanges.h \
     couchdb.h \
     couchdbserver.h \
     couchdbresponse.h \
-    couchdbquery.h
+    couchdbquery.h \
+    couchdblistener.h
 
 SOURCES += \
-    couchdbchanges.cpp \
     couchdb.cpp \
     couchdbserver.cpp \
     couchdbresponse.cpp \
-    couchdbquery.cpp
+    couchdbquery.cpp \
+    couchdblistener.cpp
 

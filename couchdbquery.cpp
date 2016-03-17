@@ -6,8 +6,9 @@
 class CouchDBQueryPrivate
 {
 public:
-    CouchDBQueryPrivate() :
+    CouchDBQueryPrivate(CouchDBServer *s) :
         request(0),
+        server(s),
         timer(0)
     {}
 
@@ -17,15 +18,18 @@ public:
         if(timer) delete timer;
     }
 
+    CouchDBServer *server; //Query doesn't own server
     QNetworkRequest *request;
-    QByteArray body;
     CouchDBOperation operation;
+    QString database;
+    QString documentID;
+    QByteArray body;
     QTimer *timer;
 };
 
-CouchDBQuery::CouchDBQuery(QObject *parent) :
+CouchDBQuery::CouchDBQuery(CouchDBServer *server, QObject *parent) :
     QObject(parent),
-    d_ptr(new CouchDBQueryPrivate)
+    d_ptr(new CouchDBQueryPrivate(server))
 {
     Q_D(CouchDBQuery);
     d->request = new QNetworkRequest;
@@ -38,6 +42,12 @@ CouchDBQuery::CouchDBQuery(QObject *parent) :
 CouchDBQuery::~CouchDBQuery()
 {
     delete d_ptr;
+}
+
+CouchDBServer *CouchDBQuery::server() const
+{
+    Q_D(const CouchDBQuery);
+    return d->server;
 }
 
 QNetworkRequest* CouchDBQuery::request() const
@@ -68,6 +78,30 @@ void CouchDBQuery::setOperation(const CouchDBOperation &operation)
 {
     Q_D(CouchDBQuery);
     d->operation = operation;
+}
+
+QString CouchDBQuery::database() const
+{
+    Q_D(const CouchDBQuery);
+    return d->database;
+}
+
+void CouchDBQuery::setDatabase(const QString &database)
+{
+    Q_D(CouchDBQuery);
+    d->database = database;
+}
+
+QString CouchDBQuery::documentID() const
+{
+    Q_D(const CouchDBQuery);
+    return d->documentID;
+}
+
+void CouchDBQuery::setDocumentID(const QString &documentID)
+{
+    Q_D(CouchDBQuery);
+    d->documentID = documentID;
 }
 
 QByteArray CouchDBQuery::body() const

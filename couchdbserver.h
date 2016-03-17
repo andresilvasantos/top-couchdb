@@ -4,7 +4,7 @@
 #include <QObject>
 
 class CouchDBServerPrivate;
-class CouchDBServer : QObject
+class CouchDBServer : public QObject
 {
     Q_OBJECT
 public:

@@ -13,12 +13,6 @@ public:
     explicit CouchDBResponse(QObject *parent = 0);
     virtual ~CouchDBResponse();
 
-    QString database() const;
-    void setDatabase(const QString& database);
-
-    QString documentID() const;
-    void setDocumentID(const QString& documentID);
-
     CouchDBReplyStatus status() const;
     void setStatus(const CouchDBReplyStatus& status);
 

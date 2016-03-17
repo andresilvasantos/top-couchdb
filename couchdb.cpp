@@ -22,18 +22,6 @@ public:
     
     virtual ~CouchDBPrivate()
     {
-        /*foreach(QTimer *timer, repliesTimeoutMap.keys())
-        {
-            QNetworkReply *reply = repliesTimeoutMap.value(timer);
-            delete reply;
-            delete timer;
-        }
-        
-        foreach(QNetworkReply *reply, repliesChangesMap.values())
-        {
-            delete reply;
-        }*/
-
         if(server && cleanServerOnQuit) delete server;
         
         if(networkManager) delete networkManager;
@@ -44,9 +32,6 @@ public:
 
     QNetworkAccessManager *networkManager;
     QHash<QNetworkReply*, CouchDBQuery*> currentQueries;
-    
-    //QMap<QTimer*, QNetworkReply*> repliesTimeoutMap;
-    //QMap<QString, QNetworkReply*> repliesChangesMap;
 };
 
 CouchDB::CouchDB(QObject *parent) :
@@ -84,35 +69,13 @@ void CouchDB::setServer(CouchDBServer *server)
     d->cleanServerOnQuit = true;
 }
 
-/*QUrl CouchDB::generateUrl(const QString &url, const CouchDBAccessType& accessType)
+void CouchDB::setServerConfiguration(const QString &url, const int &port, const QString &username, const QString &password)
 {
     Q_D(CouchDB);
-    
-    QUrl urlGenerated;
-    switch(accessType)
-    {
-    case COUCHDB_REMOTE:
-    {
-        QString urlStr = d->baseUrl + "/" + url;
-        
-        if(d->credentialsEnabled)
-        {
-            int index = urlStr.indexOf("://");
-            urlStr = urlStr.insert(index + 3, d->username + ":" + d->password + "@");
-//            qDebug() << urlStr;
-        }
-        urlGenerated = QUrl(urlStr);
-        
-        break;
-    }
-    case COUCHDB_LOCAL:
-    default:
-        urlGenerated = QUrl("http://localhost:" + QString::number(d->port) + "/" + url);
-        break;
-    }
-    
-    return urlGenerated;
-}*/
+    d->server->setUrl(url);
+    d->server->setPort(port);
+    if(!username.isEmpty() && !password.isEmpty()) d->server->setCredential(username, password);
+}
 
 void CouchDB::executeQuery(CouchDBQuery *query)
 {
@@ -200,9 +163,65 @@ void CouchDB::queryFinished()
     reply->deleteLater();
 
     CouchDBResponse response;
-    //response.setDatabase();
+    response.setData(data);
+    response.setStatus(hasError ? COUCHDB_ERROR : COUCHDB_SUCCESS);
 
-    //return CouchDBResponse(query, (hasError)? CouchDBReplyStatus::COUCHDB_ERROR : CouchDBReplyStatus::COUCHDB_SUCCESS, data);
+    switch(query->operation())
+    {
+    case COUCHDB_CHECKINSTALLATION:
+    default:
+//        QJsonDocument document = QJsonDocument::fromJson(replyBA);
+//        emit installationChecked(document.object().contains("couchdb"));
+        emit installationChecked(response);
+        break;
+    case COUCHDB_STARTSESSION:
+//        QString cookie(reply->rawHeader("Set-Cookie"));
+//        cookie = cookie.right(cookie.count() - (cookie.indexOf("=") + 1));
+//        cookie = cookie.left(cookie.indexOf(";"));
+//        //d->cookieJar->insertCookie(QNetworkCookie("AuthSession", cookie.toStdString().c_str()));
+//        emit sessionStarted(true, false);
+
+        emit sessionStarted(response);
+        break;
+    case COUCHDB_ENDSESSION:
+        emit sessionEnded(response);
+        break;
+    case COUCHDB_LISTDATABASES:
+        emit databasesListed(response);
+        break;
+    case COUCHDB_CREATEDATABASE:
+        emit databaseCreated(response);
+        break;
+    case COUCHDB_DELETEDATABASE:
+        emit databaseDeleted(response);
+        break;
+    case COUCHDB_LISTDOCUMENTS:
+        emit documentsListed(response);
+        break;
+    case COUCHDB_RETRIEVEREVISION:
+        emit revisionRetrieved(response);
+        break;
+    case COUCHDB_RETRIEVEDOCUMENT:
+        emit documentRetrieved(response);
+        break;
+    case COUCHDB_UPDATEDOCUMENT:
+        emit documentUpdated(response);
+        break;
+    case COUCHDB_DELETEDOCUMENT:
+        emit documentDeleted(response);
+        break;
+    case COUCHDB_UPLOADATTACHMENT:
+        emit attachmentUploaded(response);
+        break;
+    case COUCHDB_DELETEATTACHMENT:
+        emit attachmentDeleted(response);
+        break;
+    case COUCHDB_REPLICATEDATABASE:
+        emit databaseReplicated(response);
+        break;
+    }
+
+    delete query;
 }
 
 void CouchDB::queryTimeout()
@@ -219,110 +238,31 @@ void CouchDB::checkInstallation()
 {
     Q_D(CouchDB);
 
-
-    
-    //QUrl url = generateUrl("", accessType);
-//    qDebug() << "Checking CouchDB installation" << url;
-
     CouchDBQuery *query = new CouchDBQuery(this);
     query->setUrl(QString("%1").arg(d->server->baseURL()));
     query->setOperation(COUCHDB_CHECKINSTALLATION);
 
     executeQuery(query);
-
-    /*if(d->server->hasCredential()) request.setRawHeader("Authorization", "Basic " + d->server->getCredential());
-
-    QNetworkReply* reply = d->networkManager->get(request);
-    connect(reply, SIGNAL(finished()), SLOT(installationCheckFinished()));
-    connect(reply, SIGNAL(error(QNetworkReply::NetworkError)), SLOT(installationCheckError(QNetworkReply::NetworkError)));
-    
-    QTimer *timer = new QTimer(this);
-    timer->setSingleShot(true);
-    timer->setInterval(TIMEOUT_INTERVAL);
-    timer->start();
-    connect(timer, SIGNAL(timeout()), SLOT(installationCheckTimeout()));
-    
-    d->repliesTimeoutMap.insert(timer, reply);*/
 }
-/*
-void CouchDB::checkInstallationFinished()
+
+void CouchDB::startSession(const QString &username, const QString &password)
 {
     Q_D(CouchDB);
-    
-    QNetworkReply* reply = qobject_cast<QNetworkReply*>(sender());
-    if(!reply) return;
-    
-    if(!d->repliesTimeoutMap.values().contains(reply)) return;
-    
-    const QByteArray replyBA = reply->readAll();
-    
-    QJsonDocument document = QJsonDocument::fromJson(replyBA);
-    emit installationChecked(document.object().contains("couchdb"));
-    
-    removeTimer(reply);
-    delete reply;
-}
 
-void CouchDB::installationCheckError(QNetworkReply::NetworkError error)
-{
-    if(error >= 201 && error <= 299) return;
-    
-    QNetworkReply* reply = qobject_cast<QNetworkReply*>(sender());
-    if(!reply) return;
-    
-    emit installationChecked(false);
-    
-    removeTimer(reply);
-    reply->deleteLater();
-}
-
-void CouchDB::installationCheckTimeout()
-{
-    Q_D(CouchDB);
-    
-    QTimer *timer = qobject_cast<QTimer*>(sender());
-    
-    if(!timer) return;
-    
-    QNetworkReply *reply = d->repliesTimeoutMap.value(timer, 0);
-    if(!reply) return;
-    
-    emit installationChecked(false);
-    
-    removeTimer(reply);
-    delete reply;
-}
-
-void CouchDB::startSession(const QString &username, const QString &password, const CouchDBAccessType& accessType)
-{
-    Q_D(CouchDB);
-    
-    QUrl url = generateUrl("_session", accessType);
-    QNetworkRequest request(url);
-    
-    qDebug() << "Trying to start session: " + request.url().toString();
-    
     QUrlQuery postData;
     postData.addQueryItem("name", username);
     postData.addQueryItem("password", password);
-    
-    request.setRawHeader("Accept", "application/json");
-    request.setRawHeader("Content-Type", "application/x-www-form-urlencoded");
-    
-    QNetworkReply* reply = d->networkManagerListener->post(request, postData.toString(QUrl::FullyEncoded).toUtf8());
-    d->networkManager->post(request, postData.toString(QUrl::FullyEncoded).toUtf8());
-    connect(reply, SIGNAL(finished()), SLOT(startSessionFinished()));
-    connect(reply, SIGNAL(error(QNetworkReply::NetworkError)), SLOT(startSessionError(QNetworkReply::NetworkError)));
-    
-    QTimer *timer = new QTimer(this);
-    timer->setSingleShot(true);
-    timer->setInterval(TIMEOUT_INTERVAL);
-    timer->start();
-    connect(timer, SIGNAL(timeout()), SLOT(startSessionTimeout()));
-    
-    d->repliesTimeoutMap.insert(timer, reply);
-}
 
+    CouchDBQuery *query = new CouchDBQuery(this);
+    query->setUrl(QString("%1/_session").arg(d->server->baseURL()));
+    query->setOperation(COUCHDB_STARTSESSION);
+    query->request()->setRawHeader("Accept", "application/json");
+    query->request()->setRawHeader("Content-Type", "application/x-www-form-urlencoded");
+    query->setBody(postData.toString(QUrl::FullyEncoded).toUtf8());
+
+    executeQuery(query);
+}
+/*
 void CouchDB::startSessionFinished()
 {
     Q_D(CouchDB);

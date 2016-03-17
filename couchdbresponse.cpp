@@ -7,8 +7,6 @@ public:
         status(COUCHDB_ERROR)
     {}
 
-    QString database;
-    QString documentID;
     QByteArray data;
     CouchDBReplyStatus status;
 };
@@ -22,30 +20,6 @@ CouchDBResponse::CouchDBResponse(QObject *parent) :
 CouchDBResponse::~CouchDBResponse()
 {
     delete d_ptr;
-}
-
-QString CouchDBResponse::database() const
-{
-    Q_D(const CouchDBResponse);
-    return d->database;
-}
-
-void CouchDBResponse::setDatabase(const QString &database)
-{
-    Q_D(CouchDBResponse);
-    d->database = database;
-}
-
-QString CouchDBResponse::documentID() const
-{
-    Q_D(const CouchDBResponse);
-    return d->documentID;
-}
-
-void CouchDBResponse::setDocumentID(const QString &documentID)
-{
-    Q_D(CouchDBResponse);
-    d->documentID = documentID;
 }
 
 CouchDBReplyStatus CouchDBResponse::status() const

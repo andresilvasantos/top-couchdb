@@ -24,6 +24,7 @@ public:
 
     CouchDBServer *server() const;
     void setServer(CouchDBServer *server);
+    void setServerConfiguration(const QString& url, const int& port, const QString& username = "", const QString& password = "");
 
 //    void setBaseUrl(const QString &url);
 //    void setCredentials(const QString &username, const QString &password);
@@ -33,13 +34,13 @@ signals:
     void installationChecked(const CouchDBResponse& response);
     void sessionStarted(const CouchDBResponse& response);
     void sessionEnded(const CouchDBResponse& response);
+    void databasesListed(const CouchDBResponse& response);
     void databaseCreated(const CouchDBResponse& response);
     void databaseDeleted(const CouchDBResponse& response);
-    void databasesListed(const CouchDBResponse& response);
+    void documentsListed(const CouchDBResponse& response);
     void revisionRetrieved(const CouchDBResponse& response);
     void documentUpdated(const CouchDBResponse& response);
     void documentDeleted(const CouchDBResponse& response);
-    void documentsListed(const CouchDBResponse& response);
     void documentRetrieved(const CouchDBResponse& response);
     void attachmentUploaded(const CouchDBResponse& response);
     void attachmentDeleted(const CouchDBResponse& response);
@@ -52,7 +53,7 @@ public slots:
     Q_INVOKABLE void checkInstallation();
 
     Q_INVOKABLE void startSession(const QString& username, const QString& password);
-    Q_INVOKABLE void endSession();
+    /*Q_INVOKABLE void endSession();
 
     Q_INVOKABLE void createDatabase(const QString& database);
     Q_INVOKABLE void deleteDatabase(const QString& database);
@@ -76,7 +77,7 @@ public slots:
                                          const bool& createTarget, const bool& continuous, const bool& cancel = false);
 
     Q_INVOKABLE void listenToChanges(const QString& database, const QString& documentID);
-    Q_INVOKABLE bool stopListenToChanges(const QString& database, const QString& documentID);
+    Q_INVOKABLE bool stopListenToChanges(const QString& database, const QString& documentID);*/
 
 private slots:
     void queryFinished();

@@ -10,6 +10,8 @@ public:
 
     QString url;
     int  port;
+    QString username;
+    QString password;
     QByteArray credential;
 };
 
@@ -50,10 +52,15 @@ void CouchDBServer::setPort(const int& port)
     d->port = port;
 }
 
-QString CouchDBServer::baseURL() const
+QString CouchDBServer::baseURL(const bool& withCredential) const
 {
     Q_D(const CouchDBServer);
-    return QString("http://%1:%2").arg(d->url, QString::number(d->port));
+    QString url;
+
+    if(withCredential && hasCredential()) url = QString("http://%1:%2@%3:%4").arg(d->username, d->password, d->url, QString::number(d->port));
+    else url = QString("http://%1:%2").arg(d->url, QString::number(d->port));
+
+    return url;
 }
 
 QByteArray CouchDBServer::credential() const
@@ -65,6 +72,8 @@ QByteArray CouchDBServer::credential() const
 void CouchDBServer::setCredential(const QString& username, const QString& password)
 {
     Q_D(CouchDBServer);
+    d->username = username;
+    d->password = password;
     d->credential = QByteArray(QString("%1:%2").arg(username, password).toLatin1()).toBase64();
 }
 

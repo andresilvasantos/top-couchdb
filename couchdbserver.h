@@ -17,7 +17,7 @@ public:
     int  port() const;
     void setPort(const int& port);
 
-    QString baseURL() const;
+    QString baseURL(const bool& withCredential = false) const;
 
     QByteArray credential() const;
     void setCredential(const QString& username, const QString& password);

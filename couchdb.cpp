@@ -90,7 +90,7 @@ void CouchDB::executeQuery(CouchDBQuery *query)
         reply = d->networkManager->get(*query->request());
         break;
     case COUCHDB_STARTSESSION:
-        reply = d->networkManager->get(*query->request());
+        reply = d->networkManager->post(*query->request(), query->body());
         break;
     case COUCHDB_ENDSESSION:
         reply = d->networkManager->deleteResource(*query->request());
@@ -126,7 +126,7 @@ void CouchDB::executeQuery(CouchDBQuery *query)
         reply = d->networkManager->deleteResource(*query->request());
         break;
     case COUCHDB_REPLICATEDATABASE:
-        reply = d->networkManager->put(*query->request(), query->body());
+        reply = d->networkManager->post(*query->request(), query->body());
         break;
     }
 
@@ -163,8 +163,8 @@ void CouchDB::queryFinished()
     CouchDBResponse response;
     response.setQuery(query);
     response.setData(data);
-    response.setStatus(hasError || (query->operation() != COUCHDB_CHECKINSTALLATION && !response.documentObj().value("ok").toBool())
-                       ? COUCHDB_ERROR : COUCHDB_SUCCESS);
+    response.setStatus(hasError || (query->operation() != COUCHDB_CHECKINSTALLATION && query->operation() != COUCHDB_RETRIEVEDOCUMENT &&
+            !response.documentObj().value("ok").toBool()) ? COUCHDB_ERROR : COUCHDB_SUCCESS);
 
     switch(query->operation())
     {
@@ -416,23 +416,10 @@ void CouchDB::replicateDatabaseFrom(CouchDBServer *sourceServer, const QString& 
 {
     Q_D(CouchDB);
 
-    QJsonObject object;
-    object.insert("source", QString("%1/%2").arg(sourceServer->baseURL(), sourceDatabase));
-    object.insert("target", QString("%1/%2").arg(d->server->baseURL(), targetDatabase));
-    object.insert("create_target", createTarget);
-    object.insert("continuous", continuous);
-    object.insert("cancel", cancel);
-    QJsonDocument document(object);
+    QString source = QString("%1/%2").arg(sourceServer->baseURL(true), sourceDatabase);
+    QString target = d->server->url().contains("localhost") ? targetDatabase : QString("%1/%2").arg(d->server->baseURL(true), targetDatabase);
 
-    CouchDBQuery *query = new CouchDBQuery(sourceServer, this);
-    query->setUrl(QString("%1/_replicate").arg(sourceServer->baseURL()));
-    query->setOperation(COUCHDB_REPLICATEDATABASE);
-    query->setDatabase(sourceDatabase);
-    query->request()->setRawHeader("Accept", "application/json");
-    query->request()->setRawHeader("Content-Type", "application/json");
-    query->setBody(document.toJson());
-
-    executeQuery(query);
+    replicateDatabase(source, target, targetDatabase, createTarget, continuous, cancel);
 }
 
 void CouchDB::replicateDatabaseTo(CouchDBServer *targetServer, const QString& sourceDatabase, const QString& targetDatabase,
@@ -440,18 +427,32 @@ void CouchDB::replicateDatabaseTo(CouchDBServer *targetServer, const QString& so
 {
     Q_D(CouchDB);
 
+    QString source = d->server->url().contains("localhost") ? sourceDatabase : QString("%1/%2").arg(d->server->baseURL(true), sourceDatabase);
+    QString target = QString("%1/%2").arg(targetServer->baseURL(true), targetDatabase);
+
+    replicateDatabase(source, target, targetDatabase, createTarget, continuous, cancel);
+}
+
+void CouchDB::replicateDatabase(const QString &source, const QString &target, const QString& database, const bool &createTarget,
+                                const bool &continuous, const bool &cancel)
+{
+    Q_D(CouchDB);
+
+    if(!cancel) qDebug() << "Starting replication from" << source << "to" << target;
+    else qDebug() << "Cancelling replication from" << source << "to" << target;
+
     QJsonObject object;
-    object.insert("source", QString("%1/%2").arg(d->server->baseURL(), sourceDatabase));
-    object.insert("target", QString("%1/%2").arg(targetServer->baseURL(), targetDatabase));
+    object.insert("source", source);
+    object.insert("target", target);
     object.insert("create_target", createTarget);
     object.insert("continuous", continuous);
     object.insert("cancel", cancel);
     QJsonDocument document(object);
 
     CouchDBQuery *query = new CouchDBQuery(d->server, this);
-    query->setUrl(QString("%1/_replicate").arg(d->server->baseURL()));
+    query->setUrl(QString("%1/_replicate").arg(d->server->baseURL(true)));
     query->setOperation(COUCHDB_REPLICATEDATABASE);
-    query->setDatabase(sourceDatabase);
+    query->setDatabase(database);
     query->request()->setRawHeader("Accept", "application/json");
     query->request()->setRawHeader("Content-Type", "application/json");
     query->setBody(document.toJson());
@@ -466,6 +467,9 @@ CouchDBListener* CouchDB::createListener(const QString &database, const QString 
     CouchDBListener *listener = new CouchDBListener(d->server);
     listener->setDatabase(database);
     listener->setDocumentID(documentID);
+    listener->launch();
+
+    qDebug() << "Created listener for database:" << database << ", document:" << documentID;
 
     return listener;
 }

@@ -8,6 +8,7 @@
 #include <QUrlQuery>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QTimer>
 #include <QDebug>
 
@@ -27,9 +28,9 @@ public:
         if(retryTimer) retryTimer->stop();
         if(reply) reply->abort();
 
-        if(networkManager) delete networkManager;
         if(reply) delete reply;
         if(retryTimer) delete retryTimer;
+        if(networkManager) delete networkManager;
     }
 
     CouchDBServer *server;
@@ -39,6 +40,7 @@ public:
     QNetworkReply *reply;
     QTimer* retryTimer;
     QMap<QString,QString> parameters;
+    QMap<QString,QString> revisionsMap;
 };
 
 
@@ -56,6 +58,7 @@ CouchDBListener::CouchDBListener(CouchDBServer * server) :
     d->retryTimer->setSingleShot(true);
     connect(d->retryTimer, SIGNAL(timeout()), this, SLOT(start()));
 
+    d->parameters.insert("filter", "app/docFilter");
     d->parameters.insert("feed", "continuous");
     d->parameters.insert("heartbeat", "10000");
     d->parameters.insert("timeout", "60000");
@@ -94,6 +97,7 @@ void CouchDBListener::setDocumentID(const QString &documentID)
 {
     Q_D(CouchDBListener);
     d->documentID = documentID;
+    d->parameters.insert("name", d->documentID);
 }
 
 void CouchDBListener::setParam(const QString& name, const QString& value)
@@ -120,9 +124,7 @@ void CouchDBListener::start()
         urlQuery.addQueryItem(i.key(), i.value());
     }
 
-    QUrl url;
-    if(d->documentID.isEmpty()) url = QUrl(QString("%1/%2/_changes").arg(d->server->baseURL(), d->database));
-    else url = QUrl(QString("%1/%2/_changes?name=%3&filter=app/docFilter").arg(d->server->baseURL(), d->database, d->documentID));
+    QUrl url = QUrl(QString("%1/%2/_changes").arg(d->server->baseURL(), d->database));
     url.setQuery(urlQuery);
 
     QNetworkRequest request;
@@ -137,25 +139,19 @@ void CouchDBListener::readChanges()
 {
     Q_D(CouchDBListener);
 
-    QList<QString> changes_list;
-    QTextStream in(d->reply->readAll());
-    while (!in.atEnd()) {
-        QJsonDocument json_line = QJsonDocument::fromJson(in.readLine().toUtf8());
-        if(json_line.object().contains("id"))
-        {
-            changes_list.append(json_line.object().find("id").value().toString());
-        }
-        else
-        {
-            if(json_line.object().contains("last_seq"))
-            {
-                qDebug() << json_line.object().find("last_seq").value().toInt();
-            }
-        }
-    }
+    const QByteArray replyBA = d->reply->readAll();
+    QJsonDocument document = QJsonDocument::fromJson(replyBA);
 
-    //emit notification(d->database, changes_list);
-    //emit changesMade(document.object().value("id").toString(), document.object().value("changes").toArray().first().toObject().value("rev").toString());
+    if(!document.object().contains("changes")) return;
+
+    QString revision = document.object().value("changes").toArray().first().toObject().value("rev").toString();
+    QString docID = d->documentID.isEmpty() ? document.object().value("id").toString() : d->documentID;
+
+    //If the revision is the same as previous changes return
+    if(d->revisionsMap.value(docID) == revision) return;
+
+    d->revisionsMap.insert(docID, revision);
+    emit changesMade(revision);
 }
 
 void CouchDBListener::listenFinished(QNetworkReply *reply)

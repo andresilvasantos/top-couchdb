@@ -77,6 +77,8 @@ private slots:
 protected:
     void executeQuery(CouchDBQuery *query);
 
+    void replicateDatabase(const QString& source, const QString& target, const QString &database, const bool& createTarget, const bool& continuous, const bool& cancel = false);
+
 private:
     Q_DECLARE_PRIVATE(CouchDB)
     CouchDBPrivate * const d_ptr;

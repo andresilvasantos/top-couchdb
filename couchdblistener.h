@@ -26,7 +26,7 @@ public:
     void launch();
 
 signals:
-//    void notification( const QString& db, const QList<QString>& v );
+    void changesMade(const QString& revision);
 
 private slots:
     void start();

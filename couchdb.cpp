@@ -79,13 +79,12 @@ void CouchDB::executeQuery(CouchDBQuery *query)
 {
     Q_D(CouchDB);
 
-    if(query->server()->hasCredential()) query->request()->setRawHeader("Authorization", "Basic " + query->server()->credential());
+    if(query->server()->hasCredential() && query->operation() != COUCHDB_STARTSESSION)
+    {
+        query->request()->setRawHeader("Authorization", "Basic " + query->server()->credential());
+    }
 
     qDebug() << "Invoked url:" << query->operation() << query->request()->url().toString();
-
-//    QSslConfiguration conf = query->request()->sslConfiguration();
-//    conf.setPeerVerifyMode(QSslSocket::VerifyNone);
-//    query->request()->setSslConfiguration(conf);
 
     QNetworkReply * reply;
     switch(query->operation()) {
@@ -94,20 +93,8 @@ void CouchDB::executeQuery(CouchDBQuery *query)
         reply = d->networkManager->get(*query->request());
         break;
     case COUCHDB_STARTSESSION:
-    {
         reply = d->networkManager->post(*query->request(), query->body());
-        reply->ignoreSslErrors();
-//        QSslError ignoreNOErrors(QSslError::NoError);
-
-//        foreach(QSslError error, errors)
-//            if(error.error() != QSslError::NoError)
-//                qDebug() << error.errorString();
-
-//        QList<QSslError> expectedSslErrors;
-//        expectedSslErrors.append(ignoreNOErrors);
-//        reply->ignoreSslErrors(expectedSslErrors);
         break;
-    }
     case COUCHDB_ENDSESSION:
         reply = d->networkManager->deleteResource(*query->request());
         break;
@@ -172,7 +159,6 @@ void CouchDB::queryFinished()
     }
     else
     {
-        qDebug() << "WTF" << reply->error();
         qWarning() << reply->errorString();
         hasError = true;
     }
@@ -191,6 +177,7 @@ void CouchDB::queryFinished()
         emit installationChecked(response);
         break;
     case COUCHDB_STARTSESSION:
+        if(hasError && reply->error() >= 201 && reply->error() <= 299) response.setStatus(COUCHDB_AUTHERROR);
         emit sessionStarted(response);
         break;
     case COUCHDB_ENDSESSION:
@@ -482,6 +469,8 @@ CouchDBListener* CouchDB::createListener(const QString &database, const QString 
     Q_D(CouchDB);
 
     CouchDBListener *listener = new CouchDBListener(d->server);
+    listener->setCookieJar(d->networkManager->cookieJar());
+    d->networkManager->cookieJar()->setParent(0);
     listener->setDatabase(database);
     listener->setDocumentID(documentID);
     listener->launch();

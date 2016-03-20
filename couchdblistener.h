@@ -23,6 +23,8 @@ public:
 
     QString revision(const QString& documentID = "") const;
 
+    void setCookieJar(QNetworkCookieJar *cookieJar);
+
     void setParam(const QString &name, const QString &value);
     
     void launch();

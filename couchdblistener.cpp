@@ -30,6 +30,7 @@ public:
 
         if(reply) delete reply;
         if(retryTimer) delete retryTimer;
+
         if(networkManager) delete networkManager;
     }
 
@@ -108,6 +109,12 @@ QString CouchDBListener::revision(const QString &documentID) const
     if(!documentID.isEmpty()) docID = documentID;
 
     return d->revisionsMap.value(docID);
+}
+
+void CouchDBListener::setCookieJar(QNetworkCookieJar *cookieJar)
+{
+    Q_D(CouchDBListener);
+    d->networkManager->setCookieJar(cookieJar);
 }
 
 void CouchDBListener::setParam(const QString& name, const QString& value)

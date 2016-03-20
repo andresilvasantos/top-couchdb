@@ -21,6 +21,8 @@ public:
     QString documentID() const;
     void setDocumentID(const QString& documentID);
 
+    QString revision(const QString& documentID = "") const;
+
     void setParam(const QString &name, const QString &value);
     
     void launch();

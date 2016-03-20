@@ -5,11 +5,13 @@ class CouchDBServerPrivate
 public:
     CouchDBServerPrivate() :
         url("localhost"),
-        port(5984)
+        port(5984),
+        secureConnection(false)
     {}
 
     QString url;
     int  port;
+    bool secureConnection;
     QString username;
     QString password;
     QByteArray credential;
@@ -36,7 +38,12 @@ void CouchDBServer::setUrl(const QString& url)
 {
     Q_D(CouchDBServer);
     if(d->url == url) return;
+
     d->url = url;
+
+    d->secureConnection = d->url.contains("https://");
+    d->url.remove("https://");
+    d->url.remove("http://");
 }
 
 int CouchDBServer::port() const
@@ -52,13 +59,33 @@ void CouchDBServer::setPort(const int& port)
     d->port = port;
 }
 
+bool CouchDBServer::secureConnection() const
+{
+    Q_D(const CouchDBServer);
+    return d->secureConnection;
+}
+
+void CouchDBServer::setSecureConnection(const bool &secureConnection)
+{
+    Q_D(CouchDBServer);
+    d->secureConnection = secureConnection;
+}
+
 QString CouchDBServer::baseURL(const bool& withCredential) const
 {
     Q_D(const CouchDBServer);
     QString url;
 
-    if(withCredential && hasCredential()) url = QString("http://%1:%2@%3:%4").arg(d->username, d->password, d->url, QString::number(d->port));
-    else url = QString("http://%1:%2").arg(d->url, QString::number(d->port));
+    if(d->secureConnection)
+    {
+        if(withCredential && hasCredential()) url = QString("https://%1:%2@%3").arg(d->username, d->password, d->url);
+        else url = QString("https://%1").arg(d->url);
+    }
+    else
+    {
+        if(withCredential && hasCredential()) url = QString("http://%1:%2@%3:%4").arg(d->username, d->password, d->url, QString::number(d->port));
+        else url = QString("http://%1:%2").arg(d->url, QString::number(d->port));
+    }
 
     return url;
 }

@@ -100,6 +100,16 @@ void CouchDBListener::setDocumentID(const QString &documentID)
     d->parameters.insert("name", d->documentID);
 }
 
+QString CouchDBListener::revision(const QString &documentID) const
+{
+    Q_D(const CouchDBListener);
+
+    QString docID = d->documentID;
+    if(!documentID.isEmpty()) docID = documentID;
+
+    return d->revisionsMap.value(docID);
+}
+
 void CouchDBListener::setParam(const QString& name, const QString& value)
 {
     Q_D(CouchDBListener);
@@ -124,8 +134,11 @@ void CouchDBListener::start()
         urlQuery.addQueryItem(i.key(), i.value());
     }
 
+    qDebug() << d->server->secureConnection() << d->server->baseURL();
     QUrl url = QUrl(QString("%1/%2/_changes").arg(d->server->baseURL(), d->database));
     url.setQuery(urlQuery);
+
+    qDebug() << url;
 
     QNetworkRequest request;
     request.setUrl(url);

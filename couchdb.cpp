@@ -61,10 +61,10 @@ CouchDBServer *CouchDB::server() const
 void CouchDB::setServer(CouchDBServer *server)
 {
     Q_D(CouchDB);
-    if(d->server) delete d->server;
+    if(d->server && d->cleanServerOnQuit) delete d->server;
 
     d->server = server;
-    d->cleanServerOnQuit = true;
+    d->cleanServerOnQuit = false;
 }
 
 void CouchDB::setServerConfiguration(const QString &url, const int &port, const QString &username, const QString &password)
@@ -81,7 +81,11 @@ void CouchDB::executeQuery(CouchDBQuery *query)
 
     if(query->server()->hasCredential()) query->request()->setRawHeader("Authorization", "Basic " + query->server()->credential());
 
-    qDebug() << "Invoked url:" << query->request()->url().toString();
+    qDebug() << "Invoked url:" << query->operation() << query->request()->url().toString();
+
+//    QSslConfiguration conf = query->request()->sslConfiguration();
+//    conf.setPeerVerifyMode(QSslSocket::VerifyNone);
+//    query->request()->setSslConfiguration(conf);
 
     QNetworkReply * reply;
     switch(query->operation()) {
@@ -90,8 +94,20 @@ void CouchDB::executeQuery(CouchDBQuery *query)
         reply = d->networkManager->get(*query->request());
         break;
     case COUCHDB_STARTSESSION:
+    {
         reply = d->networkManager->post(*query->request(), query->body());
+        reply->ignoreSslErrors();
+//        QSslError ignoreNOErrors(QSslError::NoError);
+
+//        foreach(QSslError error, errors)
+//            if(error.error() != QSslError::NoError)
+//                qDebug() << error.errorString();
+
+//        QList<QSslError> expectedSslErrors;
+//        expectedSslErrors.append(ignoreNOErrors);
+//        reply->ignoreSslErrors(expectedSslErrors);
         break;
+    }
     case COUCHDB_ENDSESSION:
         reply = d->networkManager->deleteResource(*query->request());
         break;
@@ -156,6 +172,7 @@ void CouchDB::queryFinished()
     }
     else
     {
+        qDebug() << "WTF" << reply->error();
         qWarning() << reply->errorString();
         hasError = true;
     }
